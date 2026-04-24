@@ -1,0 +1,41 @@
+api_version = "2026-01"
+uid = "3b6f5c90-9d69-166f-d1b9-eeabb46a97200202688b"
+
+[[extensions]]
+name = "pre order checkout"
+handle = "pre-order-checkout"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Checkout.jsx"
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+api_access = true
+cart_metafields = true
+
+# Cart metafields written by this extension
+[[extensions.metafields]]
+namespace = "$app"
+key = "is_preorder"
+
+[[extensions.metafields]]
+namespace = "$app"
+key = "preorder_available_date"
+
+# Product metafields read by this extension
+[[extensions.metafields]]
+namespace = "preorder"
+key = "enabled"
+
+[[extensions.metafields]]
+namespace = "preorder"
+key = "available_date"
+
+[[extensions.metafields]]
+namespace = "preorder"
+key = "limit"
+
+[[extensions.metafields]]
+namespace = "preorder"
+key = "current_orders"

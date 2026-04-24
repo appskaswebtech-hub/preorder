@@ -1,0 +1,7 @@
+{
+  "preOrderNoticeTitle": "Pre-Order Notice",
+  "preOrderNoticeWithDate": "One or more items are available for pre-order. Expected availability: {{date}}.",
+  "preOrderNoticeNoDate": "One or more items are available for pre-order. We will ship as soon as they are available.",
+  "preOrderCount": "{{count}} pre-order item(s) in your cart.",
+  "metafieldChangesAreNotSupported": "Cart metafield changes are not supported in this checkout."
+}

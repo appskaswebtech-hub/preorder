@@ -1,0 +1,7 @@
+{
+  "preOrderNoticeTitle": "Avis de pré-commande",
+  "preOrderNoticeWithDate": "Un ou plusieurs articles sont en pré-commande. Disponibilité prévue : {{date}}.",
+  "preOrderNoticeNoDate": "Un ou plusieurs articles sont en pré-commande. Nous expédierons dès disponibilité.",
+  "preOrderCount": "{{count}} article(s) en pré-commande dans votre panier.",
+  "metafieldChangesAreNotSupported": "Les modifications de métachamps ne sont pas prises en charge."
+}

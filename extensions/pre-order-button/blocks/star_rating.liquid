@@ -1,0 +1,193 @@
+{% assign product = block.settings.product %}
+{% assign preorder_enabled = product.metafields.preorder.enabled.value %}
+{% assign available_date = product.metafields.preorder.available_date.value %}
+{% assign preorder_limit = product.metafields.preorder.limit.value | plus: 0 %}
+{% assign current_orders = product.metafields.preorder.current_orders.value | plus: 0 %}
+
+{%- comment -%} Check if product is actually out of stock {%- endcomment -%}
+{% assign is_out_of_stock = true %}
+{% if product.available and product.selected_or_first_available_variant.inventory_quantity > 0 %}
+  {% assign is_out_of_stock = false %}
+{% endif %}
+
+{% if preorder_enabled == 'true' and is_out_of_stock %}
+  {% if preorder_limit == 0 or current_orders < preorder_limit %}
+
+    <div class="pre-order-block" style="
+      border: 2px solid {{ block.settings.border_color }};
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      background-color: {{ block.settings.bg_color }};
+    ">
+      <p style="
+        font-size: 16px;
+        font-weight: bold;
+        color: {{ block.settings.text_color }};
+        margin: 0 0 8px 0;
+      ">
+        🛒 {{ block.settings.badge_text }}
+      </p>
+
+      {% if available_date != blank %}
+        <p style="font-size: 14px; color: {{ block.settings.text_color }}; margin: 0 0 12px 0;">
+          {{ block.settings.date_label }}: <strong>{{ available_date }}</strong>
+        </p>
+      {% endif %}
+
+      {% if preorder_limit > 0 %}
+        {% assign remaining = preorder_limit | minus: current_orders %}
+        <p style="font-size: 13px; color: #e44c00; margin: 0 0 12px 0;">
+          ⚠️ {{ block.settings.stock_label }}: {{ remaining }}
+        </p>
+      {% endif %}
+
+      <p style="font-size: 13px; color: {{ block.settings.text_color }}; margin: 0 0 12px 0;">
+        {{ block.settings.notice_text }}
+      </p>
+
+      <button
+        type="button"
+        onclick="addPreOrderToCart('{{ product.variants.first.id }}')"
+        style="
+          background-color: {{ block.settings.button_color }};
+          color: {{ block.settings.button_text_color }};
+          border: none;
+          padding: 12px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          border-radius: 4px;
+          cursor: pointer;
+          width: 100%;
+        "
+      >
+        {{ block.settings.button_text }}
+      </button>
+    </div>
+
+    <script>
+      function addPreOrderToCart(variantId) {
+        // Show loading state
+        event.target.disabled = true;
+        event.target.innerText = 'Processing...';
+        
+        fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: variantId,
+            quantity: 1,
+            properties: {
+              '_is_preorder': 'true',
+              '_available_date': '{{ available_date }}'
+            }
+          })
+        })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to add to cart');
+          }
+          return res.json();
+        })
+        .then(() => {
+          // Redirect to cart instead of checkout
+          window.location.href = '/cart';
+        })
+        .catch(err => {
+          console.error('Pre-order add to cart failed:', err);
+          alert('Unable to add pre-order item. Please try again.');
+          event.target.disabled = false;
+          event.target.innerText = '{{ block.settings.button_text }}';
+        });
+      }
+    </script>
+
+  {% else %}
+    <div style="padding: 12px; background: #fff3cd; border-radius: 6px; margin: 12px 0;">
+      <p style="margin: 0; font-size: 14px;">
+        {{ block.settings.sold_out_text }}
+      </p>
+    </div>
+  {% endif %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Pre-Order Button",
+  "target": "section",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "autofill": true
+    },
+    {
+      "type": "text",
+      "id": "badge_text",
+      "label": "Badge Text",
+      "default": "Pre-Order Now"
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Pre-Order Now"
+    },
+    {
+      "type": "text",
+      "id": "date_label",
+      "label": "Available Date Label",
+      "default": "Expected availability"
+    },
+    {
+      "type": "text",
+      "id": "stock_label",
+      "label": "Remaining Stock Label",
+      "default": "Only left"
+    },
+    {
+      "type": "text",
+      "id": "notice_text",
+      "label": "Notice Text",
+      "default": "Your order will be shipped as soon as this item becomes available."
+    },
+    {
+      "type": "text",
+      "id": "sold_out_text",
+      "label": "Pre-Order Sold Out Text",
+      "default": "Pre-order limit reached. Join the waitlist."
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Background Color",
+      "default": "#008060"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background Color",
+      "default": "#f0f8ff"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Color",
+      "default": "#0070f3"
+    }
+  ]
+}
+{% endschema %}
