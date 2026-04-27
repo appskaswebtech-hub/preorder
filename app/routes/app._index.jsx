@@ -364,8 +364,8 @@ export default function Index() {
           <div style={s.card}>
             <h3 style={s.cardTitle}>Quick Actions</h3>
             <button style={s.sideBtn} onClick={() => navigate("/app/products")}>Manage Pre-Order Products</button>
-            {/* <button style={s.sideBtn} onClick={() => navigate("/app/settings")}>Configure Settings</button>
-            <button style={s.sideBtn} onClick={() => navigate("/app/notifications")}>Email Templates</button> */}
+            {/* <button style={s.sideBtn} onClick={() => navigate("/app/settings")}>Configure Settings</button> */}
+            <button style={s.sideBtn} onClick={() => navigate("/app/notifications")}>Email Templates</button>
           </div>
 
           {/* <div style={s.card}>

@@ -4,7 +4,6 @@
 {% assign preorder_limit = product.metafields.preorder.limit.value | plus: 0 %}
 {% assign current_orders = product.metafields.preorder.current_orders.value | plus: 0 %}
 
-{%- comment -%} Check if product is actually out of stock {%- endcomment -%}
 {% assign is_out_of_stock = true %}
 {% if product.available and product.selected_or_first_available_variant.inventory_quantity > 0 %}
   {% assign is_out_of_stock = false %}
@@ -13,100 +12,283 @@
 {% if preorder_enabled == 'true' and is_out_of_stock %}
   {% if preorder_limit == 0 or current_orders < preorder_limit %}
 
-    <div class="pre-order-block" style="
+  <style>
+    .po-card {
       border: 2px solid {{ block.settings.border_color }};
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 10px;
+      overflow: hidden;
       margin: 16px 0;
-      background-color: {{ block.settings.bg_color }};
-    ">
-      <p style="
-        font-size: 16px;
-        font-weight: bold;
-        color: {{ block.settings.text_color }};
-        margin: 0 0 8px 0;
-      ">
-        🛒 {{ block.settings.badge_text }}
-      </p>
+      font-family: sans-serif;
+    }
+    .po-header {
+      background: {{ block.settings.header_bg }};
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .po-badge {
+      background: {{ block.settings.gold_color }};
+      color: {{ block.settings.header_bg }};
+      font-size: 11px;
+      font-weight: bold;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+    .po-header-title {
+      color: {{ block.settings.gold_color }};
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .po-body { padding: 16px; background: {{ block.settings.bg_color }}; }
+    .po-date-row { font-size: 13px; color: {{ block.settings.text_color }}; margin-bottom: 14px; }
+    .po-timer {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .po-unit {
+      background: {{ block.settings.header_bg }};
+      border-radius: 6px;
+      padding: 10px 4px;
+      text-align: center;
+    }
+    .po-num { font-size: 22px; font-weight: bold; color: {{ block.settings.gold_color }}; line-height: 1; }
+    .po-unit-label { font-size: 10px; color: #aaa; margin-top: 4px; letter-spacing: 0.5px; }
+    .po-progress-top { display: flex; justify-content: space-between; font-size: 12px; color: {{ block.settings.text_color }}; margin-bottom: 6px; }
+    .po-bar-bg { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
+    .po-bar-fill { height: 100%; background: {{ block.settings.gold_color }}; border-radius: 3px; }
+    .po-notice { font-size: 12px; color: {{ block.settings.text_color }}; margin-bottom: 14px; opacity: 0.8; }
+    .po-btn {
+      width: 100%;
+      background: {{ block.settings.button_color }};
+      color: {{ block.settings.button_text_color }};
+      border: none;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .po-btn:hover { opacity: 0.88; }
+    .po-divider { border: none; border-top: 1px solid #e0e0e0; margin: 0 0 12px; }
+    .po-notify-toggle { font-size: 12px; color: {{ block.settings.text_color }}; text-align: center; cursor: pointer; text-decoration: underline; margin: 0; }
+    .po-email-form { display: none; margin-top: 12px; }
+    .po-email-form.open { display: block; }
+    .po-email-row { display: flex; gap: 8px; }
+    .po-email-input { flex: 1; font-size: 13px; padding: 9px 12px; border-radius: 6px; border: 1px solid #ccc; }
+    .po-email-btn { background: {{ block.settings.gold_color }}; color: {{ block.settings.header_bg }}; border: none; padding: 9px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .po-success-msg { font-size: 12px; color: green; text-align: center; margin-top: 8px; display: none; }
 
-      {% if available_date != blank %}
-        <p style="font-size: 14px; color: {{ block.settings.text_color }}; margin: 0 0 12px 0;">
+    .po-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .po-overlay.open { display: flex; }
+    .po-drawer {
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-width: 500px;
+      padding: 20px;
+    }
+    .po-drawer-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 16px; }
+    .po-drawer-title { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+    .po-drawer-sub { font-size: 12px; color: #888; margin-bottom: 16px; }
+    .po-drawer-item { display: flex; gap: 12px; align-items: center; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+    .po-drawer-info { flex: 1; }
+    .po-drawer-name { font-size: 13px; font-weight: bold; }
+    .po-drawer-meta { font-size: 12px; color: #888; }
+    .po-drawer-tag { font-size: 11px; background: {{ block.settings.header_bg }}; color: {{ block.settings.gold_color }}; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+    .po-drawer-price { font-size: 14px; font-weight: bold; color: {{ block.settings.gold_color }}; }
+    .po-drawer-actions { display: flex; gap: 8px; }
+    .po-drawer-close { flex: 1; background: #f5f5f5; color: #333; border: 1px solid #ddd; padding: 12px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+    .po-drawer-go { flex: 2; background: {{ block.settings.button_color }}; color: {{ block.settings.button_text_color }}; border: none; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+  </style>
+
+  {%- comment -%}
+    Spots logic:
+    - If metafield limit exists, use that as the total.
+    - Otherwise fall back to the customizer "preorder_spots_total" setting.
+    - current_orders always comes from the metafield.
+  {%- endcomment -%}
+
+  {% assign spots_total = block.settings.preorder_spots_total | plus: 0 %}
+  {% if preorder_limit > 0 %}
+    {% assign spots_total = preorder_limit %}
+  {% endif %}
+
+  {% assign remaining = spots_total | minus: current_orders %}
+  {% if spots_total > 0 %}
+    {% assign pct = current_orders | times: 100 | divided_by: spots_total %}
+  {% else %}
+    {% assign pct = 45 %}
+  {% endif %}
+
+  <div class="po-card">
+    <div class="po-header">
+      <span class="po-badge">PRE-ORDER</span>
+      <span class="po-header-title">{{ block.settings.badge_text }}</span>
+    </div>
+    <div class="po-body">
+
+      {% if available_date != blank and block.settings.show_countdown %}
+        <div class="po-date-row">
           {{ block.settings.date_label }}: <strong>{{ available_date }}</strong>
-        </p>
+        </div>
+        <div class="po-timer">
+          <div class="po-unit"><div class="po-num" id="po-d">--</div><div class="po-unit-label">DAYS</div></div>
+          <div class="po-unit"><div class="po-num" id="po-h">--</div><div class="po-unit-label">HRS</div></div>
+          <div class="po-unit"><div class="po-num" id="po-m">--</div><div class="po-unit-label">MIN</div></div>
+          <div class="po-unit"><div class="po-num" id="po-s">--</div><div class="po-unit-label">SEC</div></div>
+        </div>
+      {% elsif available_date != blank and block.settings.show_countdown == false %}
+        <div class="po-date-row">
+          {{ block.settings.date_label }}: <strong>{{ available_date }}</strong>
+        </div>
       {% endif %}
 
-      {% if preorder_limit > 0 %}
-        {% assign remaining = preorder_limit | minus: current_orders %}
-        <p style="font-size: 13px; color: #e44c00; margin: 0 0 12px 0;">
-          ⚠️ {{ block.settings.stock_label }}: {{ remaining }}
-        </p>
+      {% if block.settings.show_progress_bar and spots_total > 0 %}
+        <div class="po-progress-top">
+          <span>Pre-orders filled</span>
+          <span>{{ remaining }} spots left</span>
+        </div>
+        <div class="po-bar-bg">
+          <div class="po-bar-fill" style="width: {{ pct }}%;"></div>
+        </div>
       {% endif %}
 
-      <p style="font-size: 13px; color: {{ block.settings.text_color }}; margin: 0 0 12px 0;">
-        {{ block.settings.notice_text }}
-      </p>
+      <p class="po-notice">&#9432; {{ block.settings.notice_text }}</p>
 
-      <button
-        type="button"
-        onclick="addPreOrderToCart('{{ product.variants.first.id }}')"
-        style="
-          background-color: {{ block.settings.button_color }};
-          color: {{ block.settings.button_text_color }};
-          border: none;
-          padding: 12px 24px;
-          font-size: 16px;
-          font-weight: bold;
-          border-radius: 4px;
-          cursor: pointer;
-          width: 100%;
-        "
-      >
+      <button class="po-btn" onclick="poOpenDrawer('{{ product.variants.first.id }}', '{{ available_date }}', '{{ block.settings.button_text }}')">
         {{ block.settings.button_text }}
       </button>
-    </div>
 
-    <script>
-      function addPreOrderToCart(variantId) {
-        // Show loading state
-        event.target.disabled = true;
-        event.target.innerText = 'Processing...';
-        
-        fetch('/cart/add.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: variantId,
-            quantity: 1,
-            properties: {
-              '_is_preorder': 'true',
-              '_available_date': '{{ available_date }}'
-            }
-          })
+      <hr class="po-divider">
+      <p class="po-notify-toggle" onclick="poToggleNotify()">{{ block.settings.notify_toggle_text }}</p>
+      <div class="po-email-form" id="po-email-form">
+        <div class="po-email-row">
+          <input class="po-email-input" type="email" placeholder="{{ block.settings.email_placeholder }}" id="po-email-input">
+          <button class="po-email-btn" onclick="poSubmitNotify()">{{ block.settings.notify_btn_text }}</button>
+        </div>
+        <p class="po-success-msg" id="po-success-msg">&#10003; {{ block.settings.notify_success_text }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="po-overlay" id="po-overlay" onclick="poCloseOutside(event)">
+    <div class="po-drawer">
+      <div class="po-drawer-handle"></div>
+      <div class="po-drawer-title">Added to cart as pre-order</div>
+      <div class="po-drawer-sub">Ships on availability date.</div>
+      <div class="po-drawer-item">
+        <div class="po-drawer-info">
+          <div class="po-drawer-name">{{ product.title }}</div>
+          <div class="po-drawer-meta">Qty: 1</div>
+          <span class="po-drawer-tag">Pre-order</span>
+        </div>
+        <div class="po-drawer-price">{{ product.price | money }}</div>
+      </div>
+      <div class="po-drawer-actions">
+        <button class="po-drawer-close" onclick="poCloseDrawer()">Continue shopping</button>
+        <button class="po-drawer-go" onclick="window.location.href='/cart'">View Cart &#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Countdown Timer
+    {% if available_date != blank and block.settings.show_countdown %}
+    (function() {
+      var target = new Date('{{ available_date }}T00:00:00');
+      function tick() {
+        var diff = target - new Date();
+        if (diff <= 0) {
+          ['po-d','po-h','po-m','po-s'].forEach(function(id){ document.getElementById(id).textContent='00'; });
+          return;
+        }
+        document.getElementById('po-d').textContent = String(Math.floor(diff/86400000)).padStart(2,'0');
+        document.getElementById('po-h').textContent = String(Math.floor((diff%86400000)/3600000)).padStart(2,'0');
+        document.getElementById('po-m').textContent = String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
+        document.getElementById('po-s').textContent = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+    {% endif %}
+
+    // Pre-Order Cart Add + Drawer
+    function poOpenDrawer(variantId, availDate, btnText) {
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: variantId,
+          quantity: 1,
+          properties: { '_is_preorder': 'true', '_available_date': availDate }
         })
-        .then(res => {
-          if (!res.ok) {
-            throw new Error('Failed to add to cart');
-          }
-          return res.json();
-        })
-        .then(() => {
-          // Redirect to cart instead of checkout
-          window.location.href = '/cart';
-        })
-        .catch(err => {
-          console.error('Pre-order add to cart failed:', err);
-          alert('Unable to add pre-order item. Please try again.');
-          event.target.disabled = false;
-          event.target.innerText = '{{ block.settings.button_text }}';
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('Cart error');
+        return res.json();
+      })
+      .then(function() {
+        document.getElementById('po-overlay').classList.add('open');
+      })
+      .catch(function(err) {
+        alert('Unable to add pre-order. Please try again.');
+        console.error(err);
+      });
+    }
+
+    function poCloseDrawer() {
+      document.getElementById('po-overlay').classList.remove('open');
+    }
+    function poCloseOutside(e) {
+      if (e.target === document.getElementById('po-overlay')) poCloseDrawer();
+    }
+
+    // Email Notify
+    function poToggleNotify() {
+      document.getElementById('po-email-form').classList.toggle('open');
+    }
+    function poSubmitNotify() {
+      var email = document.getElementById('po-email-input').value;
+      if (!email || !email.includes('@')) { alert('Please enter a valid email.'); return; }
+      // TODO: Connect to your email/webhook service here
+      document.getElementById('po-success-msg').style.display = 'block';
+      document.getElementById('po-email-input').disabled = true;
+      document.querySelector('.po-email-btn').disabled = true;
+    }
+
+    // Hide default cart buttons
+    (function () {
+      var selectors = ['[name="add"]','.product-form__submit','.btn--add-to-cart','.shopify-payment-button','.dynamic-checkout','product-form'];
+      function hide() {
+        selectors.forEach(function(s) {
+          document.querySelectorAll(s).forEach(function(el) {
+            el.style.setProperty('display','none','important');
+          });
         });
       }
-    </script>
+      hide();
+      document.addEventListener('DOMContentLoaded', hide);
+      var obs = new MutationObserver(hide);
+      obs.observe(document.body, { childList: true, subtree: true });
+      setTimeout(function(){ obs.disconnect(); }, 5000);
+    })();
+  </script>
 
   {% else %}
     <div style="padding: 12px; background: #fff3cd; border-radius: 6px; margin: 12px 0;">
-      <p style="margin: 0; font-size: 14px;">
-        {{ block.settings.sold_out_text }}
-      </p>
+      <p style="margin: 0; font-size: 14px;">{{ block.settings.sold_out_text }}</p>
     </div>
   {% endif %}
 {% endif %}
@@ -116,78 +298,64 @@
   "name": "Pre-Order Button",
   "target": "section",
   "settings": [
+    { "type": "product", "id": "product", "label": "Product", "autofill": true },
+
     {
-      "type": "product",
-      "id": "product",
-      "label": "Product",
-      "autofill": true
+      "type": "header",
+      "content": "Content"
+    },
+    { "type": "text", "id": "badge_text", "label": "Header Title", "default": "Reserve yours before it sells out" },
+    { "type": "text", "id": "button_text", "label": "Button Text", "default": "Pre-Order Now" },
+    { "type": "text", "id": "date_label", "label": "Date Label", "default": "Expected availability" },
+    { "type": "text", "id": "notice_text", "label": "Notice Text", "default": "Your order will be shipped as soon as this item becomes available." },
+    { "type": "text", "id": "sold_out_text", "label": "Sold Out Text", "default": "Pre-order limit reached. Join the waitlist." },
+    { "type": "text", "id": "notify_toggle_text", "label": "Notify Toggle Text", "default": "Notify me when back in stock instead" },
+    { "type": "text", "id": "email_placeholder", "label": "Email Placeholder", "default": "your@email.com" },
+    { "type": "text", "id": "notify_btn_text", "label": "Notify Button Text", "default": "Notify Me" },
+    { "type": "text", "id": "notify_success_text", "label": "Notify Success Text", "default": "You'll be notified when stock arrives!" },
+
+    {
+      "type": "header",
+      "content": "Countdown Timer"
     },
     {
-      "type": "text",
-      "id": "badge_text",
-      "label": "Badge Text",
-      "default": "Pre-Order Now"
+      "type": "checkbox",
+      "id": "show_countdown",
+      "label": "Show countdown timer",
+      "default": true,
+      "info": "Displays a live days / hrs / min / sec countdown to the availability date."
+    },
+
+    {
+      "type": "header",
+      "content": "Pre-order Progress Bar"
     },
     {
-      "type": "text",
-      "id": "button_text",
-      "label": "Button Text",
-      "default": "Pre-Order Now"
+      "type": "checkbox",
+      "id": "show_progress_bar",
+      "label": "Show progress bar & spots left",
+      "default": true,
+      "info": "Shows the 'Pre-orders filled' bar and remaining spots counter."
     },
     {
-      "type": "text",
-      "id": "date_label",
-      "label": "Available Date Label",
-      "default": "Expected availability"
+      "type": "number",
+      "id": "preorder_spots_total",
+      "label": "Total pre-order spots",
+      "default": 100,
+      "info": "Used as the total when the product metafield 'preorder.limit' is not set. Current orders are always read from 'preorder.current_orders'."
     },
+
     {
-      "type": "text",
-      "id": "stock_label",
-      "label": "Remaining Stock Label",
-      "default": "Only left"
+      "type": "header",
+      "content": "Colors"
     },
-    {
-      "type": "text",
-      "id": "notice_text",
-      "label": "Notice Text",
-      "default": "Your order will be shipped as soon as this item becomes available."
-    },
-    {
-      "type": "text",
-      "id": "sold_out_text",
-      "label": "Pre-Order Sold Out Text",
-      "default": "Pre-order limit reached. Join the waitlist."
-    },
-    {
-      "type": "color",
-      "id": "button_color",
-      "label": "Button Background Color",
-      "default": "#008060"
-    },
-    {
-      "type": "color",
-      "id": "button_text_color",
-      "label": "Button Text Color",
-      "default": "#ffffff"
-    },
-    {
-      "type": "color",
-      "id": "text_color",
-      "label": "Text Color",
-      "default": "#333333"
-    },
-    {
-      "type": "color",
-      "id": "bg_color",
-      "label": "Background Color",
-      "default": "#f0f8ff"
-    },
-    {
-      "type": "color",
-      "id": "border_color",
-      "label": "Border Color",
-      "default": "#0070f3"
-    }
+    { "type": "color", "id": "header_bg", "label": "Header Background (Dark)", "default": "#1a1a2e" },
+    { "type": "color", "id": "gold_color", "label": "Accent Color (Gold)", "default": "#c9a84c" },
+    { "type": "color", "id": "button_color", "label": "Button Color", "default": "#1a1a2e" },
+    { "type": "color", "id": "button_text_color", "label": "Button Text Color", "default": "#f0d080" },
+    { "type": "color", "id": "bg_color", "label": "Card Background", "default": "#ffffff" },
+    { "type": "color", "id": "border_color", "label": "Border Color", "default": "#1a1a2e" },
+    { "type": "color", "id": "text_color", "label": "Body Text Color", "default": "#333333" }
   ]
 }
 {% endschema %}
